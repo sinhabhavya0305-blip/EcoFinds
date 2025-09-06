@@ -1,75 +1,136 @@
-# strip-json-comments [![Build Status](https://travis-ci.com/sindresorhus/strip-json-comments.svg?branch=master)](https://travis-ci.com/github/sindresorhus/strip-json-comments)
+# quick-lru [![Build Status](https://travis-ci.org/sindresorhus/quick-lru.svg?branch=master)](https://travis-ci.org/sindresorhus/quick-lru) [![Coverage Status](https://coveralls.io/repos/github/sindresorhus/quick-lru/badge.svg?branch=master)](https://coveralls.io/github/sindresorhus/quick-lru?branch=master)
 
-> Strip comments from JSON. Lets you use comments in your JSON files!
+> Simple [“Least Recently Used” (LRU) cache](https://en.m.wikipedia.org/wiki/Cache_replacement_policies#Least_Recently_Used_.28LRU.29)
 
-This is now possible:
+Useful when you need to cache something and limit memory usage.
 
-```js
-{
-	// Rainbows
-	"unicorn": /* ❤ */ "cake"
-}
-```
-
-It will replace single-line comments `//` and multi-line comments `/**/` with whitespace. This allows JSON error positions to remain as close as possible to the original source.
-
-Also available as a [Gulp](https://github.com/sindresorhus/gulp-strip-json-comments)/[Grunt](https://github.com/sindresorhus/grunt-strip-json-comments)/[Broccoli](https://github.com/sindresorhus/broccoli-strip-json-comments) plugin.
+Inspired by the [`hashlru` algorithm](https://github.com/dominictarr/hashlru#algorithm), but instead uses [`Map`](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Map) to support keys of any type, not just strings, and values can be `undefined`.
 
 ## Install
 
 ```
-$ npm install strip-json-comments
+$ npm install quick-lru
 ```
 
 ## Usage
 
 ```js
-const json = `{
-	// Rainbows
-	"unicorn": /* ❤ */ "cake"
-}`;
+const QuickLRU = require('quick-lru');
 
-JSON.parse(stripJsonComments(json));
-//=> {unicorn: 'cake'}
+const lru = new QuickLRU({maxSize: 1000});
+
+lru.set('🦄', '🌈');
+
+lru.has('🦄');
+//=> true
+
+lru.get('🦄');
+//=> '🌈'
 ```
 
 ## API
 
-### stripJsonComments(jsonString, options?)
+### new QuickLRU(options?)
 
-#### jsonString
+Returns a new instance.
 
-Type: `string`
-
-Accepts a string with JSON and returns a string without comments.
-
-#### options
+### options
 
 Type: `object`
 
-##### whitespace
+#### maxSize
 
-Type: `boolean`\
-Default: `true`
+*Required*\
+Type: `number`
 
-Replace comments with whitespace instead of stripping them entirely.
+The maximum number of items before evicting the least recently used items.
 
-## Benchmark
+#### maxAge
 
-```
-$ npm run bench
-```
+Type: `number`\
+Default: `Infinity`
 
-## Related
+The maximum number of milliseconds an item should remain in cache.
+By default maxAge will be Infinity, which means that items will never expire.
 
-- [strip-json-comments-cli](https://github.com/sindresorhus/strip-json-comments-cli) - CLI for this module
-- [strip-css-comments](https://github.com/sindresorhus/strip-css-comments) - Strip comments from CSS
+Lazy expiration happens upon the next `write` or `read` call.
+
+Individual expiration of an item can be specified by the `set(key, value, options)` method.
+
+#### onEviction
+
+*Optional*\
+Type: `(key, value) => void`
+
+Called right before an item is evicted from the cache.
+
+Useful for side effects or for items like object URLs that need explicit cleanup (`revokeObjectURL`).
+
+### Instance
+
+The instance is [`iterable`](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Iteration_protocols) so you can use it directly in a [`for…of`](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Statements/for...of) loop.
+
+Both `key` and `value` can be of any type.
+
+#### .set(key, value, options?)
+
+Set an item. Returns the instance.
+
+Individual expiration of an item can be specified with the `maxAge` option. If not specified, the global `maxAge` value will be used in case it is specified on the constructor, otherwise the item will never expire.
+
+#### .get(key)
+
+Get an item.
+
+#### .has(key)
+
+Check if an item exists.
+
+#### .peek(key)
+
+Get an item without marking it as recently used.
+
+#### .delete(key)
+
+Delete an item.
+
+Returns `true` if the item is removed or `false` if the item doesn't exist.
+
+#### .clear()
+
+Delete all items.
+
+#### .resize(maxSize)
+
+Update the `maxSize`, discarding items as necessary. Insertion order is mostly preserved, though this is not a strong guarantee.
+
+Useful for on-the-fly tuning of cache sizes in live systems.
+
+#### .keys()
+
+Iterable for all the keys.
+
+#### .values()
+
+Iterable for all the values.
+
+#### .entriesAscending()
+
+Iterable for all entries, starting with the oldest (ascending in recency).
+
+#### .entriesDescending()
+
+Iterable for all entries, starting with the newest (descending in recency).
+
+#### .size
+
+The stored item count.
 
 ---
 
 <div align="center">
 	<b>
-		<a href="https://tidelift.com/subscription/pkg/npm-strip-json-comments?utm_source=npm-strip-json-comments&utm_medium=referral&utm_campaign=readme">Get professional support for this package with a Tidelift subscription</a>
+		<a href="https://tidelift.com/subscription/pkg/npm-quick-lru?utm_source=npm-quick-lru&utm_medium=referral&utm_campaign=readme">Get professional support for this package with a Tidelift subscription</a>
 	</b>
 	<br>
 	<sub>
